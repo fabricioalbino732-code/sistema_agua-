@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Registar Pagamento')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Registar Pagamento</h1>
+
+    <div class="card">
+        <p><strong>Fatura:</strong> <span th:text="${fatura.numeroFatura}"></span></p>
+        <p><strong>Cliente:</strong> <span th:text="${fatura.cliente.nomeCompleto}"></span></p>
+        <p><strong>Saldo Devedor:</strong> <span th:text="${fatura.saldoDevedor} + ' MT'"></span></p>
+    </div>
+
+    <div class="card">
+        <form th:action="@{/pagamentos/nova}" th:object="${pagamentoDTO}" method="post">
+            <input type="hidden" th:field="*{faturaId}">
+
+            <div class="form-group">
+                <label>Data do Pagamento</label>
+                <input type="date" th:field="*{dataPagamento}">
+            </div>
+
+            <div class="form-group">
+                <label>Valor Pago (MT)</label>
+                <input type="number" step="0.01" th:field="*{valorPago}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('valorPago')}" th:errors="*{valorPago}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Forma de Pagamento</label>
+                <select th:field="*{formaPagamento}">
+                    <option th:each="forma : ${formasPagamento}" th:value="${forma}" th:text="${forma}"></option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Referencia (opcional)</label>
+                <input type="text" th:field="*{referencia}" placeholder="Ex: referencia M-Pesa">
+            </div>
+
+            <div class="form-group">
+                <label>Registado por</label>
+                <input type="text" th:field="*{registadoPor}">
+            </div>
+
+            <div class="form-group">
+                <label>Observacoes</label>
+                <textarea th:field="*{observacoes}" rows="2"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Registar Pagamento</button>
+            <a th:href="@{/faturas/{id}(id=${fatura.id})}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+</body>
+</html>

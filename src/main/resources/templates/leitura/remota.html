@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registar Leitura - Sistema de Agua</title>
+    <link rel="stylesheet" th:href="@{/css/estilo.css}">
+</head>
+<body>
+<nav class="navbar">
+    <div class="navbar-brand">💧 Leitura de Contador</div>
+    <div class="navbar-links">
+        <form th:action="@{/logout}" method="post" style="display:inline">
+            <button type="submit" class="btn btn-secondary btn-sm">Sair</button>
+        </form>
+    </div>
+</nav>
+
+<div class="container" style="max-width: 500px;">
+    <div th:if="${mensagemSucesso}" class="alerta alerta-sucesso" th:text="${mensagemSucesso}"></div>
+    <div th:if="${mensagemErro}" class="alerta alerta-erro" th:text="${mensagemErro}"></div>
+
+    <div class="card">
+        <h1>Registar Leitura</h1>
+
+        <div id="statusGps" class="alerta" style="background:#fdebd0; color:#9c640c;">
+            📍 A obter localizacao GPS...
+        </div>
+
+        <form th:action="@{/leituras/remota}" th:object="${leituraRemotaDTO}" method="post"
+              enctype="multipart/form-data" id="formLeitura">
+
+            <div class="form-group">
+                <label>Cliente</label>
+                <select th:field="*{clienteId}" required>
+                    <option value="">Seleciona o cliente</option>
+                    <option th:each="cliente : ${clientes}" th:value="${cliente.id}"
+                            th:text="${cliente.nomeCompleto} + ' (' + ${cliente.numeroContador} + ')'"></option>
+                </select>
+                <div class="erro-campo" th:if="${#fields.hasErrors('clienteId')}" th:errors="*{clienteId}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Leitura Atual do Contador (m3)</label>
+                <input type="number" step="0.01" th:field="*{leituraAtual}" inputmode="decimal" required>
+                <div class="erro-campo" th:if="${#fields.hasErrors('leituraAtual')}" th:errors="*{leituraAtual}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Foto do Contador (obrigatoria)</label>
+                <input type="file" name="foto" accept="image/*" capture="environment" required>
+            </div>
+
+            <input type="hidden" th:field="*{latitude}" id="inputLatitude">
+            <input type="hidden" th:field="*{longitude}" id="inputLongitude">
+
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:12px;">
+                Registar Leitura
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const statusGps = document.getElementById('statusGps');
+    const inputLat = document.getElementById('inputLatitude');
+    const inputLng = document.getElementById('inputLongitude');
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (posicao) => {
+                inputLat.value = posicao.coords.latitude;
+                inputLng.value = posicao.coords.longitude;
+                statusGps.style.background = '#d5f0dd';
+                statusGps.style.color = '#1e6b38';
+                statusGps.textContent = '📍 Localizacao capturada com sucesso';
+            },
+            (erro) => {
+                statusGps.style.background = '#fadbd8';
+                statusGps.style.color = '#922b21';
+                statusGps.textContent = '⚠️ Nao foi possivel obter a localizacao. A leitura sera registada mesmo assim, mas sem GPS.';
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    } else {
+        statusGps.textContent = '⚠️ Este dispositivo nao suporta GPS.';
+    }
+</script>
+</body>
+</html>

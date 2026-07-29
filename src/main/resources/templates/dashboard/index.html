@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Dashboard')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Dashboard</h1>
+
+    <div class="grid-stats">
+        <div class="stat-box">
+            <div class="valor" th:text="${stats.totalClientesAtivos}">0</div>
+            <div class="label">Clientes Ativos</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${stats.totalFaturasPendentes}">0</div>
+            <div class="label">Faturas Pendentes</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${stats.totalFaturasVencidas}">0</div>
+            <div class="label">Faturas Vencidas</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${stats.totalFaturasPagas}">0</div>
+            <div class="label">Faturas Pagas</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${stats.valorFaturadoMesAtual} + ' MT'">0 MT</div>
+            <div class="label">Faturado este mes</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${stats.valorRecebidoMesAtual} + ' MT'">0 MT</div>
+            <div class="label">Recebido este mes</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${stats.taxaCobrancaPercentual} + '%'">0%</div>
+            <div class="label">Taxa de Cobranca</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Acoes Rapidas</h2>
+        <div class="actions-row">
+            <a th:href="@{/clientes/novo}" class="btn btn-primary">+ Novo Cliente</a>
+            <a th:href="@{/leituras/nova}" class="btn btn-primary">+ Nova Leitura</a>
+            <form th:action="@{/dashboard/atualizar-vencidas}" method="post" style="display:inline">
+                <button type="submit" class="btn btn-secondary">Atualizar Faturas Vencidas</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

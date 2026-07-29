@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Leituras')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Leituras de Contador</h1>
+
+    <div class="card">
+        <form th:action="@{/leituras}" method="get" class="search-bar">
+            <input type="month" name="mes" th:value="${#temporals.format(mesSelecionado, 'yyyy-MM')}">
+            <button type="submit" class="btn btn-secondary">Filtrar</button>
+            <a th:href="@{/leituras/nova}" class="btn btn-primary">+ Nova Leitura</a>
+        </form>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Data Leitura</th>
+                <th>Anterior</th>
+                <th>Atual</th>
+                <th>Consumo (m3)</th>
+                <th>Origem</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="leitura : ${leituras}">
+                <td th:text="${leitura.cliente.nomeCompleto}"></td>
+                <td th:text="${#temporals.format(leitura.dataLeitura, 'dd/MM/yyyy')}"></td>
+                <td th:text="${leitura.leituraAnterior}"></td>
+                <td th:text="${leitura.leituraAtual}"></td>
+                <td th:text="${leitura.consumoM3}"></td>
+                <td>
+                    <span th:if="${leitura.origem.name() == 'REMOTA'}" class="badge badge-paga">Remota 📍</span>
+                    <span th:if="${leitura.origem.name() == 'MANUAL'}" class="badge badge-cancelada">Manual</span>
+                </td>
+                <td>
+                    <a th:if="${leitura.fotoContadorPath != null}" th:href="@{/leituras/foto/{id}(id=${leitura.id})}"
+                       target="_blank" class="btn btn-secondary btn-sm">Ver Foto</a>
+                    <a th:href="@{/leituras/{id}/editar(id=${leitura.id})}" class="btn btn-secondary btn-sm">Editar</a>
+                    <form th:action="@{/leituras/{id}/gerar-fatura(id=${leitura.id})}" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-primary btn-sm">Gerar Fatura</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(leituras)}">
+                <td colspan="7">Nenhuma leitura registada para este mes.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

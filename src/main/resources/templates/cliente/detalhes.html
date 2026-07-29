@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Detalhes do Cliente')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1 th:text="${cliente.nomeCompleto}"></h1>
+
+    <div class="card">
+        <h2>Dados do Cliente</h2>
+        <p><strong>N.º Contador:</strong> <span th:text="${cliente.numeroContador}"></span></p>
+        <p><strong>Bairro:</strong> <span th:text="${cliente.bairro}"></span></p>
+        <p><strong>Endereco:</strong> <span th:text="${cliente.endereco}"></span></p>
+        <p><strong>Telefone:</strong> <span th:text="${cliente.telefone}"></span></p>
+        <p><strong>Email:</strong> <span th:text="${cliente.email}"></span></p>
+        <p><strong>Tipo:</strong> <span th:text="${cliente.tipoCliente}"></span></p>
+        <p><strong>Status:</strong>
+            <span th:if="${cliente.ativo}" class="badge badge-paga">Ativo</span>
+            <span th:unless="${cliente.ativo}" class="badge badge-cancelada">Inativo</span>
+        </p>
+
+        <div class="actions-row" style="margin-top: 16px;">
+            <a th:href="@{/clientes/{id}/editar(id=${cliente.id})}" class="btn btn-secondary">Editar</a>
+            <a th:href="@{/leituras/nova}" class="btn btn-primary">Registar Leitura</a>
+
+            <form th:action="@{/cortes/{id}/cortar(id=${cliente.id})}" method="post" style="display:inline">
+                <input type="hidden" name="motivo" value="Falta de pagamento">
+                <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Confirma o corte de abastecimento deste cliente?')">
+                    Registar Corte
+                </button>
+            </form>
+
+            <form th:action="@{/cortes/{id}/religar(id=${cliente.id})}" method="post" style="display:inline">
+                <button type="submit" class="btn btn-success"
+                        onclick="return confirm('Confirma a religacao deste cliente?')">
+                    Registar Religacao
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

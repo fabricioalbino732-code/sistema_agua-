@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Faturas')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Faturas</h1>
+
+    <div class="card">
+        <form th:action="@{/faturas}" method="get" class="search-bar">
+            <input type="month" name="mes" th:value="${#temporals.format(mesSelecionado, 'yyyy-MM')}">
+            <select name="status" onchange="this.form.submit()">
+                <option value="">Todos os status</option>
+                <option th:each="s : ${todosStatus}" th:value="${s}" th:text="${s}"
+                        th:selected="${s == statusSelecionado}"></option>
+            </select>
+            <button type="submit" class="btn btn-secondary">Filtrar</button>
+            <a th:href="@{/faturas/exportar-excel(mes=${#temporals.format(mesSelecionado, 'yyyy-MM')}, status=${statusSelecionado})}"
+               class="btn btn-secondary">Exportar Excel</a>
+        </form>
+
+        <form th:action="@{/faturas/pdf-lote}" method="post" target="_blank" id="formLote">
+            <table>
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>N.º Fatura</th>
+                    <th>Cliente</th>
+                    <th>Mes Ref.</th>
+                    <th>Vencimento</th>
+                    <th>Total (MT)</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="fatura : ${faturas}">
+                    <td><input type="checkbox" name="faturaIds" th:value="${fatura.id}"></td>
+                    <td th:text="${fatura.numeroFatura}"></td>
+                    <td th:text="${fatura.cliente.nomeCompleto}"></td>
+                    <td th:text="${#temporals.format(fatura.mesReferencia, 'MM/yyyy')}"></td>
+                    <td th:text="${#temporals.format(fatura.dataVencimento, 'dd/MM/yyyy')}"></td>
+                    <td>
+                        <span th:text="${fatura.valorTotal}"></span>
+                        <span th:if="${fatura.saldoAnteriorAplicado != null and fatura.saldoAnteriorAplicado.signum() > 0}"
+                              style="color:#c0392b; font-size:0.78rem; display:block;"
+                              th:text="'(inclui ' + ${fatura.saldoAnteriorAplicado} + ' MT de divida antiga)'"></span>
+                    </td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${'badge-' + #strings.toLowerCase(fatura.status)}"
+                              th:text="${fatura.status}"></span>
+                    </td>
+                    <td>
+                        <a th:href="@{/faturas/{id}(id=${fatura.id})}" class="btn btn-secondary btn-sm">Ver</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(faturas)}">
+                    <td colspan="8">Nenhuma fatura encontrada para este mes.</td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="actions-row" style="margin-top: 16px;" th:if="${not #lists.isEmpty(faturas)}">
+                <button type="submit" class="btn btn-primary">Baixar PDF em Lote (selecionadas)</button>
+                <button type="button" class="btn btn-secondary" onclick="selecionarTodas()">Selecionar Todas</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function selecionarTodas() {
+        document.querySelectorAll('#formLote input[type=checkbox]').forEach(cb => cb.checked = true);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(titulo)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${titulo} + ' - Sistema de Agua'">Sistema de Agua</title>
+    <link rel="stylesheet" th:href="@{/css/estilo.css}">
+</head>
+<body>
+<nav th:fragment="menu" class="navbar" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+    <div class="navbar-brand">💧 Sistema de Agua</div>
+    <div class="navbar-links">
+        <a th:href="@{/}">Dashboard</a>
+        <a th:href="@{/clientes}">Clientes</a>
+        <a th:href="@{/leituras}">Leituras</a>
+        <a th:href="@{/leituras/remota}">Leitura Remota</a>
+        <a th:href="@{/faturas}">Faturas</a>
+        <a th:href="@{/relatorios/dividas}">Dividas</a>
+        <a th:href="@{/cortes}">Cortes</a>
+        <a th:href="@{/configuracao}">Configuracao</a>
+        <a th:href="@{/usuarios}" sec:authorize="hasRole('ADMIN')">Utilizadores</a>
+        <a th:href="@{/backup}" sec:authorize="hasRole('ADMIN')">Backup</a>
+        <span sec:authentication="name" style="margin-left:18px; color:#cfe8f3; font-size:0.85rem;"></span>
+        <form th:action="@{/logout}" method="post" style="display:inline; margin-left:10px;">
+            <button type="submit" class="btn btn-secondary btn-sm">Sair</button>
+        </form>
+    </div>
+</nav>
+
+<div th:fragment="mensagens" class="mensagens">
+    <div th:if="${mensagemSucesso}" class="alerta alerta-sucesso" th:text="${mensagemSucesso}"></div>
+    <div th:if="${mensagemErro}" class="alerta alerta-erro" th:text="${mensagemErro}"></div>
+</div>
+</body>
+</html>

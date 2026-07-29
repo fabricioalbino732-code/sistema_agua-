@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Nova Leitura')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Registar Leitura de Contador</h1>
+
+    <div class="card">
+        <form th:action="@{/leituras/nova}" th:object="${leituraDTO}" method="post">
+
+            <div class="form-group">
+                <label>Cliente</label>
+                <select th:field="*{clienteId}" id="clienteId">
+                    <option value="">Selecione um cliente</option>
+                    <option th:each="cliente : ${clientes}" th:value="${cliente.id}"
+                            th:text="${cliente.nomeCompleto} + ' (' + ${cliente.numeroContador} + ')'"></option>
+                </select>
+                <div class="erro-campo" th:if="${#fields.hasErrors('clienteId')}" th:errors="*{clienteId}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Mes de Referencia</label>
+                <input type="month" id="mesReferenciaInput"
+                       th:value="${#temporals.format(leituraDTO.mesReferencia, 'yyyy-MM')}">
+                <input type="hidden" th:field="*{mesReferencia}" id="mesReferencia">
+            </div>
+
+            <div class="form-group">
+                <label>Data da Leitura</label>
+                <input type="date" th:field="*{dataLeitura}">
+            </div>
+
+            <div class="form-group">
+                <label>Leitura Anterior (m3)</label>
+                <input type="number" step="0.01" th:field="*{leituraAnterior}" id="leituraAnterior">
+                <div class="erro-campo" th:if="${#fields.hasErrors('leituraAnterior')}" th:errors="*{leituraAnterior}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Leitura Atual (m3)</label>
+                <input type="number" step="0.01" th:field="*{leituraAtual}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('leituraAtual')}" th:errors="*{leituraAtual}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Responsavel pela Leitura</label>
+                <input type="text" th:field="*{responsavelLeitura}">
+            </div>
+
+            <div class="form-group">
+                <label>Observacoes</label>
+                <textarea th:field="*{observacoes}" rows="2"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Registar Leitura</button>
+            <a th:href="@{/leituras}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const mesInput = document.getElementById('mesReferenciaInput');
+    const mesHidden = document.getElementById('mesReferencia');
+    const clienteSelect = document.getElementById('clienteId');
+    const leituraAnteriorInput = document.getElementById('leituraAnterior');
+
+    function sincronizarMes() {
+        if (mesInput.value) {
+            mesHidden.value = mesInput.value + '-01';
+        }
+    }
+    mesInput.addEventListener('change', sincronizarMes);
+    sincronizarMes();
+
+    function sugerirLeituraAnterior() {
+        const clienteId = clienteSelect.value;
+        const mes = mesInput.value;
+        if (!clienteId || !mes) return;
+
+        fetch(`/leituras/sugerir-anterior?clienteId=${clienteId}&mes=${mes}`)
+            .then(res => res.text())
+            .then(valor => { leituraAnteriorInput.value = valor; })
+            .catch(() => {});
+    }
+
+    clienteSelect.addEventListener('change', sugerirLeituraAnterior);
+    mesInput.addEventListener('change', sugerirLeituraAnterior);
+</script>
+</body>
+</html>

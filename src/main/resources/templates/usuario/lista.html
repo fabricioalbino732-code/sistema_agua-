@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Utilizadores')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Utilizadores do Sistema</h1>
+
+    <div class="card">
+        <a th:href="@{/usuarios/novo}" class="btn btn-primary" style="margin-bottom:16px; display:inline-block;">+ Novo Utilizador</a>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Username</th>
+                <th>Nome Completo</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="usuario : ${usuarios}">
+                <td th:text="${usuario.username}"></td>
+                <td th:text="${usuario.nomeCompleto}"></td>
+                <td th:text="${usuario.perfil}"></td>
+                <td>
+                    <span th:if="${usuario.ativo}" class="badge badge-paga">Ativo</span>
+                    <span th:unless="${usuario.ativo}" class="badge badge-cancelada">Inativo</span>
+                </td>
+                <td>
+                    <form th:if="${usuario.ativo}" th:action="@{/usuarios/{id}/inativar(id=${usuario.id})}" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-danger btn-sm"
+                                onclick="return confirm('Confirma a inativacao deste utilizador?')">Inativar</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Configuracao')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Configuracao Global do Sistema</h1>
+
+    <div class="card">
+        <div class="alerta alerta-erro" th:if="${#fields.hasErrors('*')}">
+            Ha um ou mais campos com valores invalidos — verifica os campos assinalados a vermelho abaixo.
+        </div>
+
+        <form th:action="@{/configuracao}" th:object="${configuracaoDTO}" method="post">
+
+            <div class="form-group">
+                <label>Nome da Empresa</label>
+                <input type="text" th:field="*{nomeEmpresa}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('nomeEmpresa')}" th:errors="*{nomeEmpresa}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>NUIT</label>
+                <input type="text" th:field="*{nuit}">
+            </div>
+
+            <div class="form-group">
+                <label>Endereco</label>
+                <input type="text" th:field="*{endereco}">
+            </div>
+
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" th:field="*{telefone}">
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" th:field="*{email}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Preco por m3 (MT)</label>
+                <input type="number" step="0.01" th:field="*{precoM3}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('precoM3')}" th:errors="*{precoM3}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Taxa Fixa Mensal (MT)</label>
+                <input type="number" step="0.01" th:field="*{taxaFixa}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('taxaFixa')}" th:errors="*{taxaFixa}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Dia de Vencimento (1-28)</label>
+                <input type="number" min="1" max="28" th:field="*{diaVencimento}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('diaVencimento')}" th:errors="*{diaVencimento}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Multa por Atraso (%)</label>
+                <input type="number" step="0.01" th:field="*{multaAtrasoPercentual}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('multaAtrasoPercentual')}" th:errors="*{multaAtrasoPercentual}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Consumo Minimo Cobravel (m3)</label>
+                <input type="number" step="0.01" th:field="*{consumoMinimoM3}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('consumoMinimoM3')}" th:errors="*{consumoMinimoM3}"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar Configuracao</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

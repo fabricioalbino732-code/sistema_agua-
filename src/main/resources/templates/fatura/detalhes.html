@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Detalhes da Fatura')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1 th:text="'Fatura ' + ${fatura.numeroFatura}"></h1>
+
+    <div class="card">
+        <p><strong>Cliente:</strong> <span th:text="${fatura.cliente.nomeCompleto}"></span></p>
+        <p><strong>Mes de Referencia:</strong> <span th:text="${#temporals.format(fatura.mesReferencia, 'MM/yyyy')}"></span></p>
+        <p><strong>Data de Emissao:</strong> <span th:text="${#temporals.format(fatura.dataEmissao, 'dd/MM/yyyy')}"></span></p>
+        <p><strong>Data de Vencimento:</strong> <span th:text="${#temporals.format(fatura.dataVencimento, 'dd/MM/yyyy')}"></span></p>
+        <p><strong>Consumo:</strong> <span th:text="${fatura.consumoM3} + ' m3'"></span></p>
+        <p th:if="${fatura.saldoAnteriorAplicado != null and fatura.saldoAnteriorAplicado.signum() > 0}">
+            <strong>Divida Anterior Incluida:</strong> <span th:text="${fatura.saldoAnteriorAplicado} + ' MT'"></span>
+        </p>
+        <p><strong>Valor Total:</strong> <span th:text="${fatura.valorTotal} + ' MT'"></span></p>
+        <p><strong>Valor Pago:</strong> <span th:text="${fatura.valorPago} + ' MT'"></span></p>
+        <p><strong>Saldo Devedor:</strong> <span th:text="${fatura.saldoDevedor} + ' MT'"></span></p>
+        <p><strong>Status:</strong>
+            <span class="badge" th:classappend="${'badge-' + #strings.toLowerCase(fatura.status)}"
+                  th:text="${fatura.status}"></span>
+        </p>
+        <p th:if="${fatura.transferidaParaNumeroFatura != null}">
+            <strong>Divida transferida para:</strong> <span th:text="${fatura.transferidaParaNumeroFatura}"></span>
+        </p>
+        <p th:if="${fatura.statusCobrancaZumbopay != null}">
+            <strong>Ultima cobranca M-Pesa/e-Mola:</strong>
+            <span th:text="${fatura.statusCobrancaZumbopay}"></span>
+            <span th:if="${fatura.referenciaZumbopay != null}" th:text="'(ref: ' + ${fatura.referenciaZumbopay} + ')'"></span>
+        </p>
+
+        <div class="actions-row" style="margin-top: 16px;">
+            <a th:href="@{/faturas/{id}/pdf(id=${fatura.id})}" target="_blank" class="btn btn-secondary">Baixar PDF</a>
+            <form th:action="@{/faturas/{id}/reenviar-sms(id=${fatura.id})}" method="post" style="display:inline">
+                <button type="submit" class="btn btn-secondary">Enviar SMS (com link de pagamento)</button>
+            </form>
+            <form th:action="@{/faturas/{id}/cobrar-zumbopay(id=${fatura.id})}" method="post" style="display:inline"
+                  th:if="${fatura.status.name() != 'PAGA' and fatura.status.name() != 'CANCELADA' and fatura.status.name() != 'TRANSFERIDA'}">
+                <input type="hidden" name="canal" value="mpesa">
+                <button type="submit" class="btn btn-primary">Cobrar via M-Pesa</button>
+            </form>
+            <form th:action="@{/faturas/{id}/cobrar-zumbopay(id=${fatura.id})}" method="post" style="display:inline"
+                  th:if="${fatura.status.name() != 'PAGA' and fatura.status.name() != 'CANCELADA' and fatura.status.name() != 'TRANSFERIDA'}">
+                <input type="hidden" name="canal" value="emola">
+                <button type="submit" class="btn btn-primary">Cobrar via e-Mola</button>
+            </form>
+            <a th:href="@{/faturas/{id}/editar(id=${fatura.id})}" class="btn btn-secondary"
+               th:if="${fatura.valorPago.signum() == 0 and (fatura.status.name() == 'PENDENTE' or fatura.status.name() == 'VENCIDA')}">
+                Corrigir Fatura
+            </a>
+            <a th:href="@{/pagamentos/nova/{id}(id=${fatura.id})}" class="btn btn-primary"
+               th:if="${fatura.status.name() != 'PAGA' and fatura.status.name() != 'CANCELADA' and fatura.status.name() != 'TRANSFERIDA'}">
+                Registar Pagamento
+            </a>
+            <form th:action="@{/faturas/{id}/cancelar(id=${fatura.id})}" method="post" style="display:inline"
+                  th:if="${fatura.status.name() != 'CANCELADA' and fatura.status.name() != 'TRANSFERIDA' and fatura.status.name() != 'PAGA'}">
+                <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Confirma o cancelamento desta fatura?')">Cancelar Fatura</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

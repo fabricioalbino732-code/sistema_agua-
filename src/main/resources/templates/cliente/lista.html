@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Clientes')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Clientes</h1>
+
+    <div class="card">
+        <form th:action="@{/clientes}" method="get" class="search-bar">
+            <input type="text" name="termo" th:value="${termo}" placeholder="Buscar por nome ou numero do contador...">
+            <button type="submit" class="btn btn-secondary">Buscar</button>
+            <a th:href="@{/clientes/novo}" class="btn btn-primary">+ Novo Cliente</a>
+            <a th:href="@{/clientes/exportar-excel(termo=${termo})}" class="btn btn-secondary">Exportar Excel</a>
+        </form>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Nome</th>
+                <th>N.º Contador</th>
+                <th>Bairro</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="cliente : ${clientes}">
+                <td th:text="${cliente.nomeCompleto}"></td>
+                <td th:text="${cliente.numeroContador}"></td>
+                <td th:text="${cliente.bairro}"></td>
+                <td th:text="${cliente.tipoCliente}"></td>
+                <td>
+                    <span th:if="${cliente.ativo}" class="badge badge-paga">Ativo</span>
+                    <span th:unless="${cliente.ativo}" class="badge badge-cancelada">Inativo</span>
+                </td>
+                <td>
+                    <a th:href="@{/clientes/{id}(id=${cliente.id})}" class="btn btn-secondary btn-sm">Ver</a>
+                    <a th:href="@{/clientes/{id}/editar(id=${cliente.id})}" class="btn btn-secondary btn-sm">Editar</a>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(clientes)}">
+                <td colspan="6">Nenhum cliente encontrado.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

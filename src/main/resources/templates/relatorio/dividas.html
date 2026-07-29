@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Relatorio de Dividas')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Relatorio de Dividas</h1>
+
+    <div class="actions-row" style="margin-bottom:16px;">
+        <a th:href="@{/relatorios/dividas/exportar-excel}" class="btn btn-secondary">Exportar Excel</a>
+    </div>
+
+    <div class="grid-stats">
+        <div class="stat-box">
+            <div class="valor" th:text="${relatorio.quantidadeDevedores}">0</div>
+            <div class="label">Clientes Devedores</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${relatorio.quantidadeEmDia}">0</div>
+            <div class="label">Clientes em Dia</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${relatorio.totalDivida} + ' MT'">0 MT</div>
+            <div class="label">Total em Divida</div>
+        </div>
+        <div class="stat-box">
+            <div class="valor" th:text="${relatorio.totalRecebido} + ' MT'">0 MT</div>
+            <div class="label">Total Recebido (historico)</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Clientes Devedores</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>N.º Contador</th>
+                <th>Total Faturado (MT)</th>
+                <th>Total Pago (MT)</th>
+                <th>Saldo Devedor (MT)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${relatorio.devedores}">
+                <td th:text="${c.nomeCompleto}"></td>
+                <td th:text="${c.numeroContador}"></td>
+                <td th:text="${c.totalFaturado}"></td>
+                <td th:text="${c.totalPago}"></td>
+                <td><strong th:text="${c.saldoDevedor} + ' MT'"></strong></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(relatorio.devedores)}">
+                <td colspan="5">Nenhum cliente com divida no momento. 🎉</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Clientes em Dia</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>N.º Contador</th>
+                <th>Total Pago (MT)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${relatorio.clientesEmDia}">
+                <td th:text="${c.nomeCompleto}"></td>
+                <td th:text="${c.numeroContador}"></td>
+                <td th:text="${c.totalPago} + ' MT'"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(relatorio.clientesEmDia)}">
+                <td colspan="3">Nenhum cliente em dia ainda.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

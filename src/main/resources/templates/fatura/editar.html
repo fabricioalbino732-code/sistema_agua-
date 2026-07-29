@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Corrigir Fatura')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Corrigir Fatura</h1>
+
+    <div class="card">
+        <p><strong>N.º Fatura:</strong> <span th:text="${fatura.numeroFatura}"></span></p>
+        <p><strong>Cliente:</strong> <span th:text="${fatura.cliente.nomeCompleto}"></span></p>
+        <p style="color:#6b7c88; font-size:0.85rem;">
+            Preco por m3 aplicado, taxa fixa e divida anterior arrastada permanecem
+            inalterados — apenas o consumo e a data de vencimento podem ser corrigidos aqui.
+        </p>
+
+        <form th:action="@{/faturas/{id}/editar(id=${fatura.id})}" th:object="${faturaEdicaoDTO}" method="post">
+
+            <div class="form-group">
+                <label>Consumo (m3)</label>
+                <input type="number" step="0.01" th:field="*{consumoM3}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('consumoM3')}" th:errors="*{consumoM3}"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Data de Vencimento</label>
+                <input type="date" th:field="*{dataVencimento}">
+                <div class="erro-campo" th:if="${#fields.hasErrors('dataVencimento')}" th:errors="*{dataVencimento}"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar Correcao</button>
+            <a th:href="@{/faturas/{id}(id=${fatura.id})}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+</body>
+</html>

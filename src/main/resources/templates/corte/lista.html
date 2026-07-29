@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Cortes')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Clientes Cortados Atualmente</h1>
+
+    <div class="card">
+        <table>
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Data do Corte</th>
+                <th>Motivo</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="corte : ${cortes}">
+                <td th:text="${corte.cliente.nomeCompleto}"></td>
+                <td th:text="${#temporals.format(corte.dataCorte, 'dd/MM/yyyy')}"></td>
+                <td th:text="${corte.motivo}"></td>
+                <td>
+                    <form th:action="@{/cortes/{id}/religar(id=${corte.cliente.id})}" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-success btn-sm"
+                                onclick="return confirm('Confirma a religacao deste cliente?')">Religar</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(cortes)}">
+                <td colspan="4">Nenhum cliente cortado atualmente.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Erro')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div class="card">
+        <h1>Nao foi possivel concluir a operacao</h1>
+        <div class="alerta alerta-erro" th:text="${mensagemErro}"></div>
+        <a th:href="@{/}" class="btn btn-primary">Voltar ao Dashboard</a>
+    </div>
+</div>
+</body>
+</html>

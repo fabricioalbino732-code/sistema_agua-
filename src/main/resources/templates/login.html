@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Agua</title>
+    <link rel="stylesheet" th:href="@{/css/estilo.css}">
+</head>
+<body style="display:flex; align-items:center; justify-content:center; min-height:100vh;">
+<div class="card" style="max-width: 380px; width: 100%;">
+    <h1 style="text-align:center;">💧 Sistema de Agua</h1>
+
+    <div class="alerta alerta-erro" th:if="${param.erro}">
+        Username ou senha incorretos.
+    </div>
+    <div class="alerta alerta-sucesso" th:if="${param.logout}">
+        Sessao terminada com sucesso.
+    </div>
+
+    <form th:action="@{/login}" method="post">
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" autofocus required>
+        </div>
+        <div class="form-group">
+            <label>Senha</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+    </form>
+</div>
+</body>
+</html>
