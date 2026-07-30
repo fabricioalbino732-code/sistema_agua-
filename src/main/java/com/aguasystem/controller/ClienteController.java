@@ -2,6 +2,9 @@ package com.aguasystem.controller;
 
 import com.aguasystem.dto.ClienteDTO;
 import com.aguasystem.entity.Cliente;
+import com.aguasystem.repository.FaturaRepository;
+import com.aguasystem.repository.LeituraContadorRepository;
+import com.aguasystem.repository.PagamentoRepository;
 import com.aguasystem.service.ClienteService;
 import com.aguasystem.service.ExcelService;
 import jakarta.validation.Valid;
@@ -20,10 +23,19 @@ public class ClienteController {
 
     private final ClienteService clienteService;
     private final ExcelService excelService;
+    private final FaturaRepository faturaRepository;
+    private final LeituraContadorRepository leituraContadorRepository;
+    private final PagamentoRepository pagamentoRepository;
 
-    public ClienteController(ClienteService clienteService, ExcelService excelService) {
+    public ClienteController(ClienteService clienteService, ExcelService excelService,
+                              FaturaRepository faturaRepository,
+                              LeituraContadorRepository leituraContadorRepository,
+                              PagamentoRepository pagamentoRepository) {
         this.clienteService = clienteService;
         this.excelService = excelService;
+        this.faturaRepository = faturaRepository;
+        this.leituraContadorRepository = leituraContadorRepository;
+        this.pagamentoRepository = pagamentoRepository;
     }
 
     @GetMapping
@@ -94,8 +106,29 @@ public class ClienteController {
 
     @GetMapping("/{id}")
     public String detalhes(@PathVariable Long id, Model model) {
-        model.addAttribute("cliente", clienteService.buscarPorId(id));
+        Cliente cliente = clienteService.buscarPorId(id);
+        model.addAttribute("cliente", cliente);
+
+        var faturas = faturaRepository.findByClienteIdOrderByMesReferenciaDesc(id);
+        model.addAttribute("faturas", faturas);
+
+        java.math.BigDecimal totalEmAberto = faturas.stream()
+                .filter(f -> f.getStatus() != com.aguasystem.entity.Fatura.StatusFatura.CANCELADA
+                        && f.getStatus() != com.aguasystem.entity.Fatura.StatusFatura.TRANSFERIDA)
+                .map(com.aguasystem.entity.Fatura::getSaldoDevedor)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        model.addAttribute("totalEmAberto", totalEmAberto);
+
         return "cliente/detalhes";
+    }
+
+    @GetMapping("/{id}/historico")
+    public String historico(@PathVariable Long id, Model model) {
+        model.addAttribute("cliente", clienteService.buscarPorId(id));
+        model.addAttribute("leituras", leituraContadorRepository.findByClienteIdOrderByMesReferenciaDesc(id));
+        model.addAttribute("faturas", faturaRepository.findByClienteIdOrderByMesReferenciaDesc(id));
+        model.addAttribute("pagamentos", pagamentoRepository.findByClienteIdOrderByDataPagamentoDesc(id));
+        return "cliente/historico";
     }
 
     @PostMapping("/{id}/inativar")

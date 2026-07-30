@@ -35,11 +35,11 @@ public interface FaturaRepository extends JpaRepository<Fatura, Long> {
     List<Fatura> findByMesReferencia(LocalDate mesReferencia);
 
     @Query("SELECT f FROM Fatura f JOIN FETCH f.cliente c WHERE f.mesReferencia = :mesReferencia " +
-           "ORDER BY c.nomeCompleto ASC")
+           "ORDER BY c.numeroContador ASC")
     List<Fatura> listarPorMesComCliente(LocalDate mesReferencia);
 
     @Query("SELECT f FROM Fatura f JOIN FETCH f.cliente c WHERE f.mesReferencia = :mesReferencia " +
-           "AND f.status = :status ORDER BY c.nomeCompleto ASC")
+           "AND f.status = :status ORDER BY c.numeroContador ASC")
     List<Fatura> listarPorMesEStatusComCliente(LocalDate mesReferencia, Fatura.StatusFatura status);
 
     @Query("SELECT f FROM Fatura f JOIN FETCH f.cliente WHERE f.id IN :ids")

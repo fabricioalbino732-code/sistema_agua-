@@ -14,12 +14,15 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     boolean existsByNumeroContador(String numeroContador);
 
-    List<Cliente> findByAtivoTrue();
+    List<Cliente> findByAtivoTrueOrderByNumeroContadorAsc();
 
     @Query("SELECT c FROM Cliente c WHERE " +
            "LOWER(c.nomeCompleto) LIKE LOWER(CONCAT('%', :termo, '%')) OR " +
-           "c.numeroContador LIKE CONCAT('%', :termo, '%')")
+           "c.numeroContador LIKE CONCAT('%', :termo, '%') " +
+           "ORDER BY c.numeroContador ASC")
     List<Cliente> buscarPorNomeOuContador(@Param("termo") String termo);
+
+    List<Cliente> findAllByOrderByNumeroContadorAsc();
 
     long countByAtivoTrue();
 }

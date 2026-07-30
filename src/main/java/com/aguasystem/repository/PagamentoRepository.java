@@ -12,6 +12,17 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Long> {
     List<Pagamento> findByFaturaIdOrderByDataPagamentoDesc(Long faturaId);
 
     /**
+     * Busca todos os pagamentos de um cliente (atraves das suas faturas),
+     * do mais recente para o mais antigo. Usa JOIN FETCH pelo mesmo motivo
+     * dos outros repositorios (open-in-view=false): sem o fetch, o Thymeleaf
+     * geraria LazyInitializationException ao aceder pagamento.fatura na
+     * pagina de historico do cliente.
+     */
+    @Query("SELECT p FROM Pagamento p JOIN FETCH p.fatura f WHERE f.cliente.id = :clienteId " +
+           "ORDER BY p.dataPagamento DESC, p.dataRegisto DESC")
+    List<Pagamento> findByClienteIdOrderByDataPagamentoDesc(Long clienteId);
+
+    /**
      * Agrega o total REAL recebido em dinheiro por cliente, a partir dos
      * registos de Pagamento (nunca do campo Fatura.valorPago, que fica
      * "inflado" artificialmente quando uma fatura e marcada como TRANSFERIDA

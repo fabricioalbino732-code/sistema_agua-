@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Historico do Cliente')}"></head>
+<body>
+<nav th:replace="~{layout :: menu}"></nav>
+<div class="container">
+    <div th:replace="~{layout :: mensagens}"></div>
+
+    <h1>Historico de <span th:text="${cliente.nomeCompleto}"></span></h1>
+    <p style="margin-top:-10px; margin-bottom: 20px; color:#5a6b78; font-size:0.9rem;">
+        N.º Contador: <span th:text="${cliente.numeroContador}"></span> &nbsp;|&nbsp;
+        Bairro: <span th:text="${cliente.bairro}"></span>
+    </p>
+
+    <div class="actions-row" style="margin-bottom: 20px;">
+        <a th:href="@{/clientes/{id}(id=${cliente.id})}" class="btn btn-secondary">&larr; Voltar aos Dados do Cliente</a>
+    </div>
+
+    <div class="card">
+        <h2>Leituras de Consumo</h2>
+        <table th:if="${not #lists.isEmpty(leituras)}">
+            <thead>
+            <tr>
+                <th>Mes de Referencia</th>
+                <th>Data da Leitura</th>
+                <th>Leitura Anterior</th>
+                <th>Leitura Atual</th>
+                <th>Consumo (m³)</th>
+                <th>Origem</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="leitura : ${leituras}">
+                <td th:text="${#temporals.format(leitura.mesReferencia, 'MM/yyyy')}"></td>
+                <td th:text="${#temporals.format(leitura.dataLeitura, 'dd/MM/yyyy')}"></td>
+                <td th:text="${leitura.leituraAnterior}"></td>
+                <td th:text="${leitura.leituraAtual}"></td>
+                <td th:text="${leitura.consumoM3}"></td>
+                <td th:text="${leitura.origem}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <p th:if="${#lists.isEmpty(leituras)}" style="color:#5a6b78;">Ainda nao ha leituras registadas para este cliente.</p>
+    </div>
+
+    <div class="card">
+        <h2>Faturas</h2>
+        <table th:if="${not #lists.isEmpty(faturas)}">
+            <thead>
+            <tr>
+                <th>N.º Fatura</th>
+                <th>Mes de Referencia</th>
+                <th>Emissao</th>
+                <th>Vencimento</th>
+                <th>Valor Total</th>
+                <th>Valor Pago</th>
+                <th>Saldo Devedor</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="f : ${faturas}">
+                <td th:text="${f.numeroFatura}"></td>
+                <td th:text="${#temporals.format(f.mesReferencia, 'MM/yyyy')}"></td>
+                <td th:text="${#temporals.format(f.dataEmissao, 'dd/MM/yyyy')}"></td>
+                <td th:text="${#temporals.format(f.dataVencimento, 'dd/MM/yyyy')}"></td>
+                <td th:text="${f.valorTotal} + ' MT'"></td>
+                <td th:text="${f.valorPago} + ' MT'"></td>
+                <td th:text="${f.saldoDevedor} + ' MT'"></td>
+                <td>
+                    <span th:class="'badge badge-' + ${#strings.toLowerCase(f.status.name())}"
+                          th:text="${f.status}"></span>
+                </td>
+                <td><a th:href="@{/faturas/{id}(id=${f.id})}" class="btn btn-secondary btn-sm">Ver</a></td>
+            </tr>
+            </tbody>
+        </table>
+        <p th:if="${#lists.isEmpty(faturas)}" style="color:#5a6b78;">Ainda nao ha faturas emitidas para este cliente.</p>
+    </div>
+
+    <div class="card">
+        <h2>Pagamentos</h2>
+        <table th:if="${not #lists.isEmpty(pagamentos)}">
+            <thead>
+            <tr>
+                <th>Data do Pagamento</th>
+                <th>Fatura</th>
+                <th>Valor Pago</th>
+                <th>Forma de Pagamento</th>
+                <th>Referencia</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="pagamento : ${pagamentos}">
+                <td th:text="${#temporals.format(pagamento.dataPagamento, 'dd/MM/yyyy')}"></td>
+                <td th:text="${pagamento.fatura.numeroFatura}"></td>
+                <td th:text="${pagamento.valorPago} + ' MT'"></td>
+                <td th:text="${pagamento.formaPagamento}"></td>
+                <td th:text="${pagamento.referencia}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <p th:if="${#lists.isEmpty(pagamentos)}" style="color:#5a6b78;">Ainda nao ha pagamentos registados para este cliente.</p>
+    </div>
+</div>
+</body>
+</html>

@@ -23,6 +23,7 @@
 
         <div class="actions-row" style="margin-top: 16px;">
             <a th:href="@{/clientes/{id}/editar(id=${cliente.id})}" class="btn btn-secondary">Editar</a>
+            <a th:href="@{/clientes/{id}/historico(id=${cliente.id})}" class="btn btn-secondary">Ver Historico Completo</a>
             <a th:href="@{/leituras/nova}" class="btn btn-primary">Registar Leitura</a>
 
             <form th:action="@{/cortes/{id}/cortar(id=${cliente.id})}" method="post" style="display:inline">
@@ -40,6 +41,43 @@
                 </button>
             </form>
         </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+        <h2>Histórico de Faturas</h2>
+        <p><strong>Total em aberto (todas as faturas não pagas/canceladas):</strong>
+            <span th:text="${totalEmAberto} + ' MT'"></span></p>
+
+        <table th:if="${not #lists.isEmpty(faturas)}">
+            <thead>
+                <tr>
+                    <th>Fatura</th>
+                    <th>Mês Ref.</th>
+                    <th>Emissão</th>
+                    <th>Valor Total</th>
+                    <th>Valor Pago</th>
+                    <th>Saldo Devedor</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="f : ${faturas}">
+                    <td th:text="${f.numeroFatura}"></td>
+                    <td th:text="${#temporals.format(f.mesReferencia, 'MM/yyyy')}"></td>
+                    <td th:text="${#temporals.format(f.dataEmissao, 'dd/MM/yyyy')}"></td>
+                    <td th:text="${f.valorTotal} + ' MT'"></td>
+                    <td th:text="${f.valorPago} + ' MT'"></td>
+                    <td th:text="${f.saldoDevedor} + ' MT'"></td>
+                    <td>
+                        <span th:class="'badge badge-' + ${#strings.toLowerCase(f.status.name())}"
+                              th:text="${f.status}"></span>
+                    </td>
+                    <td><a th:href="@{/faturas/{id}(id=${f.id})}" class="btn btn-secondary">Ver</a></td>
+                </tr>
+            </tbody>
+        </table>
+        <p th:if="${#lists.isEmpty(faturas)}">Este cliente ainda não tem faturas geradas.</p>
     </div>
 </div>
 </body>

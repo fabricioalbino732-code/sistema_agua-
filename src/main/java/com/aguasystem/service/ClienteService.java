@@ -20,12 +20,12 @@ public class ClienteService {
 
     @Transactional(readOnly = true)
     public List<Cliente> listarTodos() {
-        return clienteRepository.findAll();
+        return clienteRepository.findAllByOrderByNumeroContadorAsc();
     }
 
     @Transactional(readOnly = true)
     public List<Cliente> listarAtivos() {
-        return clienteRepository.findByAtivoTrue();
+        return clienteRepository.findByAtivoTrueOrderByNumeroContadorAsc();
     }
 
     @Transactional(readOnly = true)
