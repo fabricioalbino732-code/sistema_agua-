@@ -35,4 +35,15 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Long> {
            "WHERE f.status NOT IN ('CANCELADA', 'TRANSFERIDA') " +
            "GROUP BY f.cliente.id")
     List<PagamentoRealClienteProjection> agruparPagamentoRealPorCliente();
+
+    /**
+     * Soma o valor REAL recebido num intervalo de datas (ex: mes atual),
+     * a partir dos registos de Pagamento — pelo mesmo motivo do metodo
+     * acima. Usado pelo Dashboard, que antes usava SUM(Fatura.valorPago)
+     * e por isso mostrava dinheiro "recebido" que na verdade era so
+     * divida arrastada (fatura TRANSFERIDA), nunca paga pelo cliente.
+     */
+    @Query("SELECT COALESCE(SUM(p.valorPago), 0) FROM Pagamento p " +
+           "WHERE p.dataPagamento >= :inicio AND p.dataPagamento < :fim")
+    java.math.BigDecimal somarValorRecebidoNoPeriodo(java.time.LocalDate inicio, java.time.LocalDate fim);
 }

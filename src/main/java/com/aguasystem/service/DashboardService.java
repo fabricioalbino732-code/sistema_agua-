@@ -3,6 +3,7 @@ package com.aguasystem.service;
 import com.aguasystem.entity.Fatura;
 import com.aguasystem.repository.ClienteRepository;
 import com.aguasystem.repository.FaturaRepository;
+import com.aguasystem.repository.PagamentoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,15 +15,19 @@ public class DashboardService {
 
     private final ClienteRepository clienteRepository;
     private final FaturaRepository faturaRepository;
+    private final PagamentoRepository pagamentoRepository;
 
-    public DashboardService(ClienteRepository clienteRepository, FaturaRepository faturaRepository) {
+    public DashboardService(ClienteRepository clienteRepository, FaturaRepository faturaRepository,
+                             PagamentoRepository pagamentoRepository) {
         this.clienteRepository = clienteRepository;
         this.faturaRepository = faturaRepository;
+        this.pagamentoRepository = pagamentoRepository;
     }
 
     @Transactional(readOnly = true)
     public EstatisticasDashboard obterEstatisticas() {
         LocalDate mesAtual = LocalDate.now().withDayOfMonth(1);
+        LocalDate inicioProximoMes = mesAtual.plusMonths(1);
 
         EstatisticasDashboard stats = new EstatisticasDashboard();
         stats.setTotalClientesAtivos(clienteRepository.countByAtivoTrue());
@@ -30,7 +35,11 @@ public class DashboardService {
         stats.setTotalFaturasVencidas(faturaRepository.countByStatus(Fatura.StatusFatura.VENCIDA));
         stats.setTotalFaturasPagas(faturaRepository.countByStatus(Fatura.StatusFatura.PAGA));
         stats.setValorFaturadoMesAtual(faturaRepository.somarValorFaturadoNoMes(mesAtual));
-        stats.setValorRecebidoMesAtual(faturaRepository.somarValorRecebidoNoMes(mesAtual));
+        // Usa os registos REAIS de Pagamento, nao SUM(Fatura.valorPago) —
+        // esse campo fica inflado quando uma fatura e marcada como
+        // TRANSFERIDA (divida arrastada, nunca paga pelo cliente).
+        stats.setValorRecebidoMesAtual(
+                pagamentoRepository.somarValorRecebidoNoPeriodo(mesAtual, inicioProximoMes));
 
         BigDecimal faturado = stats.getValorFaturadoMesAtual();
         BigDecimal taxaCobranca = faturado.compareTo(BigDecimal.ZERO) > 0
