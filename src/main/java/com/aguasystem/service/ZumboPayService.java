@@ -67,6 +67,7 @@ public class ZumboPayService {
     public static class ResultadoLinkPagamento {
         public boolean sucesso;
         public String checkoutUrl;
+        public String referencia;  // usado para o webhook conseguir encontrar a fatura depois
         public String mensagem;
     }
 
@@ -111,6 +112,13 @@ public class ZumboPayService {
             corpo.put("currency", "MZN");
             corpo.put("channels", canais);
             corpo.put("wallet_id", walletIdMpesa);
+            // Enviado defensivamente: a doc do /payments nao confirma este
+            // campo, mas o /charges usa-o para o webhook conseguir
+            // encontrar a fatura depois (ver 'source_id' no payload do
+            // webhook). Se o ZumboPay ignorar campos desconhecidos, nao ha
+            // problema nenhum; se o aceitar e ecoar no webhook, resolve de
+            // vez a correspondencia fatura <-> pagamento por link.
+            corpo.put("source_id", "fatura-" + numeroFatura);
 
             String json = objectMapper.writeValueAsString(corpo);
 
@@ -136,8 +144,20 @@ public class ZumboPayService {
                 }
                 resultado.sucesso = true;
                 resultado.checkoutUrl = checkoutUrl;
+                // Tenta capturar uma referencia explicita da API (campos
+                // comuns: "reference", "id", "payment_id"); se nao vier
+                // nenhuma, usa o ultimo segmento do proprio checkout_url
+                // (ex: ".../pay/zp-abc123" -> "zp-abc123") como fallback,
+                // para o webhook ter pelo menos alguma pista de correlacao.
+                String referencia = primeiroTextoNaoNulo(corpoResposta.path("data"), "reference", "id", "payment_id");
+                if (referencia == null) {
+                    String[] segmentos = checkoutUrl.split("/");
+                    referencia = segmentos[segmentos.length - 1];
+                }
+                resultado.referencia = referencia;
                 resultado.mensagem = "Link de pagamento gerado com sucesso";
-                log.info("Link de pagamento ZumboPay gerado para fatura {}: {}", numeroFatura, checkoutUrl);
+                log.info("Link de pagamento ZumboPay gerado para fatura {}: {} (referencia: {})",
+                        numeroFatura, checkoutUrl, referencia);
             } else {
                 resultado.sucesso = false;
                 resultado.mensagem = corpoResposta.path("error").path("message").asText("Erro desconhecido");
@@ -345,5 +365,17 @@ public class ZumboPayService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    private String primeiroTextoNaoNulo(JsonNode node, String... campos) {
+        for (String campo : campos) {
+            if (node.has(campo) && !node.path(campo).isNull()) {
+                String valor = node.path(campo).asText();
+                if (valor != null && !valor.isBlank()) {
+                    return valor;
+                }
+            }
+        }
+        return null;
     }
 }

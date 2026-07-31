@@ -203,6 +203,12 @@ public class FaturaService {
 
         String mensagem;
         if (link.sucesso) {
+            // Guarda a referencia devolvida pelo ZumboPay — sem isto, o
+            // webhook de confirmacao de pagamento nao teria como saber a
+            // qual fatura este link/checkout corresponde.
+            fatura.setReferenciaZumbopay(link.referencia);
+            faturaRepository.save(fatura);
+
             mensagem = String.format(
                     "Ola %s! A sua fatura %s (%s/%d) no valor de %s MT esta pronta. Vencimento: %s. " +
                     "Pague aqui: %s",
