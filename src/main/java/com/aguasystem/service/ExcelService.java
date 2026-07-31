@@ -75,7 +75,15 @@ public class ExcelService {
                 row.createCell(7).setCellValue(
                         f.getSaldoAnteriorAplicado() != null ? f.getSaldoAnteriorAplicado().doubleValue() : 0);
                 row.createCell(8).setCellValue(f.getValorTotal().doubleValue());
-                row.createCell(9).setCellValue(f.getValorPago().doubleValue());
+                // Faturas TRANSFERIDA tem o saldo "quitado" apenas na
+                // contabilidade interna (arrastado para a fatura seguinte),
+                // nunca pago de facto pelo cliente — mostrar isso como
+                // "Valor Pago" enganaria quem usar esta coluna para somar
+                // o total realmente recebido.
+                double valorPagoReal = f.getStatus() == Fatura.StatusFatura.TRANSFERIDA
+                        ? 0
+                        : f.getValorPago().doubleValue();
+                row.createCell(9).setCellValue(valorPagoReal);
                 row.createCell(10).setCellValue(f.getSaldoDevedor().doubleValue());
                 row.createCell(11).setCellValue(f.getStatus().name());
             }

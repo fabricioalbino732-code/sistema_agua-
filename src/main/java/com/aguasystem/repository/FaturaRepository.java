@@ -52,17 +52,6 @@ public interface FaturaRepository extends JpaRepository<Fatura, Long> {
     @Query("SELECT COALESCE(SUM(f.valorTotal), 0) FROM Fatura f WHERE f.mesReferencia = :mes")
     java.math.BigDecimal somarValorFaturadoNoMes(LocalDate mes);
 
-    /**
-     * @deprecated Este metodo soma Fatura.valorPago, que fica "inflado"
-     * quando uma fatura e marcada como TRANSFERIDA (divida arrastada, nunca
-     * paga pelo cliente) — ver FaturaService.gerarFaturaDeLeitura. Usa
-     * PagamentoRepository.somarValorRecebidoNoPeriodo() em vez deste, que
-     * conta o dinheiro REAL recebido a partir dos registos de Pagamento.
-     */
-    @Deprecated
-    @Query("SELECT COALESCE(SUM(f.valorPago), 0) FROM Fatura f WHERE f.mesReferencia = :mes")
-    java.math.BigDecimal somarValorRecebidoNoMes(LocalDate mes);
-
     long countByStatus(Fatura.StatusFatura status);
 
     /**

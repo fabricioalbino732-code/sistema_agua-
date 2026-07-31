@@ -175,8 +175,11 @@ public class PdfService {
 
         document.add(totalTable);
 
-        // Status de pagamento
-        if (fatura.getValorPago().signum() > 0) {
+        // Status de pagamento — nao mostrar "Valor Pago" em faturas TRANSFERIDA:
+        // nesse caso o saldo foi so arrastado para a fatura seguinte, o
+        // cliente nao pagou de facto nada, e mostrar isto na fatura
+        // entregue ao cliente seria enganoso.
+        if (fatura.getValorPago().signum() > 0 && fatura.getStatus() != Fatura.StatusFatura.TRANSFERIDA) {
             document.add(new Paragraph(" "));
             Paragraph pago = new Paragraph(
                     "Valor Pago: " + fatura.getValorPago() + " MT | Saldo: " + fatura.getSaldoDevedor() + " MT",
