@@ -292,9 +292,10 @@ public class ZumboPayService {
 
     /**
      * Verifica a assinatura HMAC-SHA256 enviada pelo ZumboPay no cabecalho
-     * 'X-Zumbo-Signature', confirmando que o pedido do webhook e mesmo
-     * do ZumboPay e nao foi adulterado. NUNCA processar um webhook sem
-     * esta verificacao passar.
+     * 'X-Signature' (o controller aceita tambem algumas variantes do nome,
+     * ver ZumboPayWebhookController.CABECALHOS_ASSINATURA), confirmando
+     * que o pedido do webhook e mesmo do ZumboPay e nao foi adulterado.
+     * NUNCA processar um webhook sem esta verificacao passar.
      *
      * A assinatura e calculada sobre "{timestamp}.{corpoBruto}" (o valor
      * do cabecalho X-Timestamp, um ponto, e depois o corpo bruto do
