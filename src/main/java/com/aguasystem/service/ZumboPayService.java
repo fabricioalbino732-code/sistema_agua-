@@ -107,17 +107,21 @@ public class ZumboPayService {
             }
 
             Map<String, Object> corpo = new LinkedHashMap<>();
+            // Confirmado pelo codigo real do plugin oficial: o pedido de
+            // /payments deve indicar explicitamente o tipo ("link" para um
+            // link de pagamento simples, "recurring" para subscricoes,
+            // "split" para multi-beneficiario). Sem isto, o ZumboPay pode
+            // nao processar o source_id/reference correctamente para
+            // reconciliacao (possivel causa do erro "Missing Reference").
+            corpo.put("type", "link");
             corpo.put("title", "Fatura #" + numeroFatura);
             corpo.put("amount", valor);
             corpo.put("currency", "MZN");
             corpo.put("channels", canais);
             corpo.put("wallet_id", walletIdMpesa);
-            // Enviado defensivamente: a doc do /payments nao confirma este
-            // campo, mas o /charges usa-o para o webhook conseguir
-            // encontrar a fatura depois (ver 'source_id' no payload do
-            // webhook). Se o ZumboPay ignorar campos desconhecidos, nao ha
-            // problema nenhum; se o aceitar e ecoar no webhook, resolve de
-            // vez a correspondencia fatura <-> pagamento por link.
+            // Confirmado pelo codigo real do plugin: /payments tambem
+            // aceita e usa source_id para o webhook conseguir encontrar a
+            // fatura depois (nao era so uma tentativa defensiva).
             corpo.put("source_id", "fatura-" + numeroFatura);
 
             String json = objectMapper.writeValueAsString(corpo);
@@ -283,24 +287,28 @@ public class ZumboPayService {
     }
 
     /**
-     * Janela maxima (em segundos) que aceitamos entre o momento em que o
-     * ZumboPay assinou o webhook (X-Timestamp) e o momento em que o
-     * recebemos. Protege contra ataques de "replay" com webhooks antigos
-     * capturados por terceiros.
+     * Janela maxima (em milissegundos) entre o momento em que o ZumboPay
+     * assinou o webhook (X-Timestamp) e o momento em que o recebemos.
+     * Protege contra replay de webhooks antigos capturados por terceiros.
+     * (Confirmado pelo codigo real do plugin oficial: MAX_SKEW_MS = 300000)
      */
-    private static final long JANELA_ANTI_REPLAY_SEGUNDOS = 5 * 60;
+    private static final long JANELA_ANTI_REPLAY_MS = 300_000;
 
     /**
-     * Verifica a assinatura HMAC-SHA256 enviada pelo ZumboPay no cabecalho
-     * 'X-Signature' (o controller aceita tambem algumas variantes do nome,
-     * ver ZumboPayWebhookController.CABECALHOS_ASSINATURA), confirmando
-     * que o pedido do webhook e mesmo do ZumboPay e nao foi adulterado.
-     * NUNCA processar um webhook sem esta verificacao passar.
+     * Verifica a assinatura HMAC-SHA256 do webhook ZumboPay.
      *
-     * A assinatura e calculada sobre "{timestamp}.{corpoBruto}" (o valor
-     * do cabecalho X-Timestamp, um ponto, e depois o corpo bruto do
-     * pedido) — nao sobre o corpo sozinho. Tambem rejeitamos timestamps
-     * fora da janela anti-replay de 5 minutos.
+     * CONFIRMADO pelo codigo-fonte real do plugin oficial WooCommerce
+     * (includes/class-webhook.php) — a fonte mais fiavel que tivemos ate
+     * agora, mais do que qualquer resumo de documentacao:
+     *
+     *   Cabecalhos: X-Signature (hex) e X-Timestamp (epoch em MILISSEGUNDOS)
+     *   Formula:    hex(hmac_sha256("{X-Timestamp}.{corpoBruto}", secret))
+     *   Janela anti-replay: 5 minutos (300000 ms)
+     *
+     * (Uma tentativa anterior, baseada num resumo de documentacao
+     * diferente, usava so o corpo sem timestamp — estava errada e
+     * rejeitava todos os webhooks reais. Corrigido aqui com base no
+     * codigo real, testado, do plugin.)
      */
     public boolean assinaturaValida(String corpoBruto, String timestamp, String assinaturaRecebida) {
         if (webhookSecret == null || webhookSecret.isBlank()) {
@@ -308,18 +316,30 @@ public class ZumboPayService {
             return false;
         }
         if (assinaturaRecebida == null || assinaturaRecebida.isBlank()) {
-            log.warn("Webhook ZumboPay sem cabecalho X-Zumbo-Signature — rejeitado");
+            log.warn("Webhook ZumboPay sem cabecalho X-Signature — rejeitado");
             return false;
         }
         if (timestamp == null || timestamp.isBlank()) {
             log.warn("Webhook ZumboPay sem cabecalho X-Timestamp — rejeitado");
             return false;
         }
-        if (!dentroDaJanelaAntiReplay(timestamp)) {
+        // O X-Signature pode vir com prefixo "sha256=" (visto no plugin real)
+        String assinaturaLimpa = assinaturaRecebida.replaceFirst("(?i)^sha256=", "").trim();
+
+        long timestampMs;
+        try {
+            timestampMs = Long.parseLong(timestamp.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Webhook ZumboPay com X-Timestamp invalido: {}", timestamp);
+            return false;
+        }
+        long agoraMs = System.currentTimeMillis();
+        if (Math.abs(agoraMs - timestampMs) > JANELA_ANTI_REPLAY_MS) {
             log.warn("Webhook ZumboPay com X-Timestamp fora da janela anti-replay (timestamp={}) — rejeitado",
                     timestamp);
             return false;
         }
+
         try {
             String mensagemAssinada = timestamp + "." + corpoBruto;
 
@@ -330,32 +350,12 @@ public class ZumboPayService {
             byte[] hashCalculado = mac.doFinal(mensagemAssinada.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             String assinaturaEsperada = bytesParaHex(hashCalculado);
 
-            // Comparacao em tempo constante, para evitar ataques de "timing"
             return java.security.MessageDigest.isEqual(
                     assinaturaEsperada.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                    assinaturaRecebida.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                    assinaturaLimpa.getBytes(java.nio.charset.StandardCharsets.UTF_8)
             );
         } catch (Exception e) {
             log.error("Erro ao verificar assinatura do webhook ZumboPay: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-
-    /**
-     * Aceita X-Timestamp em segundos ou milissegundos desde epoch (o
-     * ZumboPay nao documenta explicitamente qual — tentamos ambos).
-     * Se o valor nao for um numero valido, rejeita por seguranca.
-     */
-    private boolean dentroDaJanelaAntiReplay(String timestamp) {
-        try {
-            long valor = Long.parseLong(timestamp.trim());
-            // Se o numero for demasiado grande para ser segundos (> ano 2100
-            // em segundos), assumimos que veio em milissegundos.
-            long epocaSegundos = valor > 4_000_000_000L ? valor / 1000 : valor;
-            long agora = java.time.Instant.now().getEpochSecond();
-            return Math.abs(agora - epocaSegundos) <= JANELA_ANTI_REPLAY_SEGUNDOS;
-        } catch (NumberFormatException e) {
-            log.error("X-Timestamp do webhook ZumboPay nao e um numero valido: {}", timestamp);
             return false;
         }
     }

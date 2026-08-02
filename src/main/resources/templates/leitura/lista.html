@@ -41,6 +41,9 @@
                 <td>
                     <a th:if="${leitura.fotoContadorPath != null}" th:href="@{/leituras/foto/{id}(id=${leitura.id})}"
                        target="_blank" class="btn btn-secondary btn-sm">Ver Foto</a>
+                    <a th:if="${leitura.latitude != null and leitura.longitude != null}"
+                       th:href="'https://www.google.com/maps?q=' + ${leitura.latitude} + ',' + ${leitura.longitude}"
+                       target="_blank" class="btn btn-secondary btn-sm">📍 Ver Localização</a>
                     <a th:href="@{/leituras/{id}/editar(id=${leitura.id})}" class="btn btn-secondary btn-sm">Editar</a>
                     <form th:action="@{/leituras/{id}/gerar-fatura(id=${leitura.id})}" method="post" style="display:inline">
                         <button type="submit" class="btn btn-primary btn-sm">Gerar Fatura</button>

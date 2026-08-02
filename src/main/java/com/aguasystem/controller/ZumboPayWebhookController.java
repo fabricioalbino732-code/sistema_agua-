@@ -12,11 +12,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,16 +28,14 @@ import java.time.LocalDate;
  * (M-Pesa/e-Mola). Segue as 3 camadas de seguranca recomendadas:
  *
  * 1. VERIFICACAO DE ASSINATURA — confirma que o pedido e mesmo do ZumboPay
- *    (HMAC-SHA256 sobre "{X-Timestamp}.{corpoBruto}", cabecalho
- *    X-Signature — ver CABECALHOS_ASSINATURA para as variantes aceites —,
- *    com janela anti-replay de 5 minutos)
+ *    (HMAC-SHA256 sobre "{X-Timestamp}.{corpoBruto}", cabecalhos
+ *    X-Signature + X-Timestamp, com janela anti-replay de 5 minutos —
+ *    confirmado pelo codigo-fonte real do plugin oficial WooCommerce)
  * 2. IDEMPOTENCIA — ignora eventos ja processados antes (evita duplicar
  *    pagamentos se o ZumboPay reenviar o mesmo evento)
  * 3. RE-VERIFICACAO AUTORITATIVA — nunca confia cegamente no conteudo do
  *    webhook; confirma sempre via GET /payments/{reference} antes de
  *    marcar qualquer fatura como paga
- * 4. GUARD DE PIN (e-Mola) — para pagamentos e-Mola, so aceita quando ha
- *    prova explicita de PIN confirmado no payload autoritativo
  *
  * Este endpoint fica FORA da autenticacao normal do sistema (ver
  * SecurityConfig) — quem "faz login" aqui e a assinatura HMAC, nao uma
@@ -64,27 +62,18 @@ public class ZumboPayWebhookController {
         this.webhookEventoRepository = webhookEventoRepository;
     }
 
-    /**
-     * Nomes de cabecalho aceites para a assinatura HMAC, por ordem de
-     * prioridade. O ZumboPay envia "X-Signature" na pratica (confirmado no
-     * codigo-fonte do plugin oficial WooCommerce deles), mas a
-     * documentacao escrita menciona "X-Zumbopay-Signature" — por isso
-     * aceitamos varias variantes em vez de confiar cegamente num so nome.
-     */
-    private static final String[] CABECALHOS_ASSINATURA = {
-            "X-Signature", "X-Zumbo-Signature", "X-Zumbopay-Signature", "X-ZumboPay-Signature"
-    };
-
     @PostMapping
     @Transactional
-    public ResponseEntity<String> receber(@RequestBody String corpoBruto, HttpServletRequest requestHttp) {
+    public ResponseEntity<String> receber(@RequestBody String corpoBruto,
+                                           @RequestHeader(value = "X-Signature", required = false)
+                                           String assinatura,
+                                           @RequestHeader(value = "X-Timestamp", required = false)
+                                           String timestamp) {
 
-        String assinatura = primeiroCabecalhoPresente(requestHttp, CABECALHOS_ASSINATURA);
-        String timestamp = requestHttp.getHeader("X-Timestamp");
-
-        // CAMADA 1 — verificacao de assinatura (inclui janela anti-replay)
+        // CAMADA 1 — verificacao de assinatura (HMAC-SHA256 sobre
+        // "{X-Timestamp}.{corpoBruto}", com janela anti-replay de 5 min)
         if (!zumboPayService.assinaturaValida(corpoBruto, timestamp, assinatura)) {
-            log.warn("Webhook ZumboPay recebido com assinatura invalida, timestamp em falta/expirado — rejeitado");
+            log.warn("Webhook ZumboPay recebido com assinatura invalida ou timestamp expirado/em falta — rejeitado");
             return ResponseEntity.status(401).body("assinatura invalida");
         }
 
@@ -132,22 +121,51 @@ public class ZumboPayWebhookController {
             return;
         }
 
-        // CAMADA 3 — re-verificacao autoritativa: nunca confiar so no
-        // conteudo do webhook, confirmar sempre com uma chamada GET direta
-        JsonNode pagamentoConfirmado;
-        try {
-            pagamentoConfirmado = zumboPayService.consultarPagamento(reference);
-        } catch (Exception e) {
-            log.error("Falha ao re-verificar pagamento {} junto do ZumboPay: {}", reference, e.getMessage());
-            return;
-        }
+        // CAMADA 3 — re-verificacao autoritativa via GET /payments/{reference}.
+        //
+        // CONFIRMADO (teste real, 02/08/2026): este endpoint SO reconhece
+        // referencias geradas por POST /payments (formato "ZP_..."). Para
+        // referencias de POST /charges (formato "ZUMBO..."), devolve
+        // sempre 404 not_found — nao existe endpoint documentado
+        // equivalente para consultar cobrancas STK.
+        //
+        // Por isso, para referencias "ZUMBO..." (charges/STK), confiamos
+        // diretamente no conteudo do webhook — que ja passou pela Camada 1
+        // (assinatura HMAC valida = e mesmo o ZumboPay) e Camada 2
+        // (idempotencia). Para referencias "ZP_..." (links de pagamento),
+        // mantemos a re-verificacao autoritativa completa, que e suportada
+        // e documentada para este caso.
+        boolean referenciaDeLinkPagamento = reference.toUpperCase().startsWith("ZP");
 
-        JsonNode dadosConfirmados = pagamentoConfirmado.path("data");
-        String statusReal = dadosConfirmados.path("status").asText("");
-        if (!"success".equals(statusReal)) {
-            log.warn("Re-verificacao do pagamento {} nao confirma sucesso (status real: {}) — ignorado por seguranca",
-                    reference, statusReal);
-            return;
+        JsonNode dadosConfirmados;
+        if (referenciaDeLinkPagamento) {
+            JsonNode pagamentoConfirmado;
+            try {
+                pagamentoConfirmado = zumboPayService.consultarPagamento(reference);
+            } catch (Exception e) {
+                log.error("Falha ao re-verificar pagamento {} junto do ZumboPay: {}", reference, e.getMessage());
+                return;
+            }
+            dadosConfirmados = pagamentoConfirmado.path("data");
+            String statusReal = dadosConfirmados.path("status").asText("");
+            if (!"success".equals(statusReal)) {
+                log.warn("Re-verificacao do pagamento {} nao confirma sucesso (status real: {}) — ignorado "
+                        + "por seguranca", reference, statusReal);
+                return;
+            }
+        } else {
+            // Referencia de /charges (STK) — nao ha endpoint para
+            // re-verificar; usamos os dados do proprio webhook, ja
+            // autenticado pela assinatura HMAC (Camada 1).
+            dadosConfirmados = dados;
+            String statusNoWebhook = dadosConfirmados.path("status").asText("");
+            if (!statusNoWebhook.isBlank() && !"success".equals(statusNoWebhook)) {
+                log.warn("Webhook de /charges (ref {}) com status='{}' dentro dos dados, apesar do tipo de "
+                        + "evento ser payment.succeeded — ignorado por seguranca", reference, statusNoWebhook);
+                return;
+            }
+            log.info("Referencia {} e de /charges (STK) — sem endpoint de re-verificacao disponivel; "
+                    + "a confiar no webhook ja validado por assinatura", reference);
         }
 
         String sourceId = dadosConfirmados.path("source_id").asText(null);
@@ -156,12 +174,13 @@ public class ZumboPayWebhookController {
                 ? new BigDecimal(dadosConfirmados.path("amount").asText("0"))
                 : null;
 
-        // e-Mola exige confirmacao de PIN antes de marcarmos como pago —
-        // ver javadoc de pinEmolaConfirmado(). M-Pesa nao precisa desta
-        // verificacao extra.
+        // REGRA CRITICA e-Mola (confirmada pelo codigo real do plugin
+        // oficial): a API pode devolver status=success para e-Mola ANTES
+        // do cliente ter mesmo confirmado o PIN no telemovel. Nunca
+        // marcamos como paga sem uma prova explicita de PIN confirmado.
         if ("emola".equalsIgnoreCase(canalConfirmado) && !pinEmolaConfirmado(dadosConfirmados)) {
-            log.info("Pagamento e-Mola {} com status=success mas sem prova de PIN confirmado ainda — " +
-                    "tratado como pendente, a aguardar novo webhook/consulta.", reference);
+            log.warn("Pagamento e-Mola (ref {}) tem status=success mas sem prova de PIN confirmado — "
+                    + "a aguardar confirmacao (nao marcado como pago ainda)", reference);
             return;
         }
 
@@ -204,6 +223,32 @@ public class ZumboPayWebhookController {
         }
     }
 
+    /**
+     * Verifica se o payload autoritativo (GET /payments/{reference}) prova
+     * que o cliente introduziu mesmo o PIN na app e-Mola. Aceita varias
+     * formas em que a API pode marcar essa confirmacao (a doc nao e clara
+     * sobre qual usa, por isso verificamos todas, tal como o plugin
+     * oficial faz).
+     */
+    private boolean pinEmolaConfirmado(JsonNode dadosConfirmados) {
+        if (dadosConfirmados.path("pin_verified").asBoolean(false)) return true;
+        if (dadosConfirmados.path("pin_confirmed").asBoolean(false)) return true;
+        if (!dadosConfirmados.path("pin_confirmed_at").isMissingNode()
+                && !dadosConfirmados.path("pin_confirmed_at").asText("").isBlank()) return true;
+
+        String providerStatus = dadosConfirmados.path("provider_status").asText("").toUpperCase();
+        if (providerStatus.equals("PIN_CONFIRMED") || providerStatus.equals("COMPLETED_WITH_PIN")
+                || providerStatus.equals("AUTHORIZED_BY_PIN") || providerStatus.equals("SUCCESS")) {
+            return true;
+        }
+
+        JsonNode metadata = dadosConfirmados.path("metadata");
+        if (metadata.path("pin_verified").asBoolean(false)) return true;
+        if (metadata.path("emola_pin_ok").asBoolean(false)) return true;
+
+        return false;
+    }
+
     private Fatura localizarFatura(String reference, String sourceId) {
         return faturaRepository.findByReferenciaZumbopay(reference)
                 .or(() -> {
@@ -223,41 +268,5 @@ public class ZumboPayWebhookController {
             }
         }
         return null;
-    }
-
-    private String primeiroCabecalhoPresente(HttpServletRequest request, String... nomes) {
-        for (String nome : nomes) {
-            String valor = request.getHeader(nome);
-            if (valor != null && !valor.isBlank()) {
-                return valor;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * REGRA CRITICA para e-Mola (confirmada no verificador oficial do
-     * ZumboPay): o e-Mola exige que o cliente introduza o PIN na app dele.
-     * NUNCA marcar a fatura como paga so porque "status":"success" veio no
-     * payload — e preciso confirmar tambem uma prova explicita de PIN
-     * (pin_verified / pin_confirmed_at / provider_status conhecido).
-     * Se a prova nao estiver presente, tratamos como pendente e deixamos
-     * para o proximo webhook (ou nova consulta manual) confirmar depois.
-     * Para M-Pesa esta prova nao e exigida pela API, por isso so se aplica
-     * quando o canal confirmado e "emola".
-     */
-    private boolean pinEmolaConfirmado(JsonNode dadosConfirmados) {
-        if (dadosConfirmados.path("pin_verified").asBoolean(false)) return true;
-        if (dadosConfirmados.path("pin_confirmed").asBoolean(false)) return true;
-        if (dadosConfirmados.hasNonNull("pin_confirmed_at")) return true;
-        String providerStatus = dadosConfirmados.path("provider_status").asText("").toUpperCase();
-        if (providerStatus.equals("PIN_CONFIRMED") || providerStatus.equals("COMPLETED_WITH_PIN")
-                || providerStatus.equals("AUTHORIZED_BY_PIN") || providerStatus.equals("SUCCESS")) {
-            return true;
-        }
-        JsonNode metadata = dadosConfirmados.path("metadata");
-        if (metadata.path("pin_verified").asBoolean(false)) return true;
-        if (metadata.path("emola_pin_ok").asBoolean(false)) return true;
-        return false;
     }
 }
