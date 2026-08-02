@@ -330,6 +330,13 @@ public class ZumboPayService {
         try {
             // Formato principal e confirmado: HMAC_SHA256(secret, corpo_bruto)
             String assinaturaEsperada = calcularHmac(corpoBruto);
+
+            // LOG TEMPORARIO DE DIAGNOSTICO — remover depois de confirmar o problema.
+            log.info("DIAGNOSTICO ASSINATURA — recebida={} | calculada(corpo sozinho)={} | " +
+                            "tamanho corpoBruto={} bytes | webhookSecret configurado com {} caracteres",
+                    assinaturaRecebida, assinaturaEsperada, corpoBruto.length(),
+                    webhookSecret == null ? 0 : webhookSecret.length());
+
             if (java.security.MessageDigest.isEqual(
                     assinaturaEsperada.getBytes(java.nio.charset.StandardCharsets.UTF_8),
                     assinaturaRecebida.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
