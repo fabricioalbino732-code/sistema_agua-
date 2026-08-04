@@ -75,11 +75,28 @@ public class ZumboPayWebhookController {
                                            @RequestHeader(value = "X-Timestamp", required = false)
                                            String timestamp,
                                            HttpServletRequest request) {
+        try {
+            return processarWebhook(corpoBruto, assinaturaPlugin, assinaturaTester, timestamp, request);
+        } catch (Throwable erroInesperado) {
+            // REDE DE SEGURANCA DE TOPO — garante que NUNCA falhamos em
+            // silencio. Se algo imprevisto acontecer (uma excecao que
+            // nenhuma das validacoes abaixo previu), fica sempre aqui uma
+            // linha de log com o tipo exato do erro, a mensagem, e o corpo
+            // recebido — para nunca mais precisarmos de adivinhar.
+            log.error("ERRO INESPERADO ao processar webhook ZumboPay — tipo={}, mensagem={}, corpo recebido={}",
+                    erroInesperado.getClass().getName(), erroInesperado.getMessage(), corpoBruto, erroInesperado);
+            return ResponseEntity.status(500).body("erro interno ao processar webhook");
+        }
+    }
 
-        // DIAGNOSTICO — regista TODOS os cabecalhos recebidos, para o caso
-        // de o nome real (numa entrega de producao verdadeira) ser
-        // diferente dos que ja tentamos. Pode ser removido depois de
-        // resolvido.
+    private ResponseEntity<String> processarWebhook(String corpoBruto, String assinaturaPlugin,
+                                                      String assinaturaTester, String timestamp,
+                                                      HttpServletRequest request) {
+
+        // DIAGNOSTICO — regista TODOS os cabecalhos E o corpo completo
+        // recebidos, para nunca mais precisarmos de adivinhar o que
+        // realmente chegou. Pode reduzir-se o detalhe depois de tudo
+        // confirmado a funcionar de forma estavel.
         StringBuilder todosOsCabecalhos = new StringBuilder();
         Enumeration<String> nomesCabecalhos = request.getHeaderNames() != null
                 ? request.getHeaderNames() : Collections.emptyEnumeration();
@@ -87,7 +104,8 @@ public class ZumboPayWebhookController {
             String nome = nomesCabecalhos.nextElement();
             todosOsCabecalhos.append("\n    ").append(nome).append(": ").append(request.getHeader(nome));
         }
-        log.info("DIAGNOSTICO — todos os cabecalhos recebidos no webhook:{}", todosOsCabecalhos);
+        log.info("DIAGNOSTICO — webhook ZumboPay recebido. Cabecalhos:{}\n  Corpo completo: {}",
+                todosOsCabecalhos, corpoBruto);
 
         // Ja tivemos 3 fontes diferentes do ZumboPay (doc antiga, plugin
         // oficial, testador do painel) a indicar nomes de cabecalho e
@@ -245,8 +263,8 @@ public class ZumboPayWebhookController {
             // Ex: fatura ja estava paga por outra via (dinheiro, outro canal).
             // Nao deixamos isto quebrar o processamento do webhook — fica so
             // registado no log para revisao manual se necessario.
-            log.warn("Nao foi possivel registar o pagamento automatico da fatura {} (ref: {}): {}",
-                    fatura.getNumeroFatura(), reference, e.getMessage());
+            log.warn("Nao foi possivel registar o pagamento automatico da fatura {} (ref: {}): tipo={}, mensagem={}",
+                    fatura.getNumeroFatura(), reference, e.getClass().getSimpleName(), e.getMessage(), e);
         }
     }
 

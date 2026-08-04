@@ -131,11 +131,11 @@ public class ZumboPayService {
                     .header("Authorization", "Bearer " + apiKey)
                     .header("X-Merchant-Id", merchantId)
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(20))
+                    .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(json))
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = enviarComRetry(request, 3);
             JsonNode corpoResposta = objectMapper.readTree(response.body());
 
             if (response.statusCode() == 200 || response.statusCode() == 201) {
@@ -174,6 +174,38 @@ public class ZumboPayService {
         }
 
         return resultado;
+    }
+
+    /**
+     * Envia um pedido HTTP com retry automatico para falhas de REDE
+     * (timeout, ligacao instavel/cortada a meio). NAO repete se o pedido
+     * chegou ao ZumboPay e devolveu uma resposta (mesmo que seja um erro de
+     * negocio como 402 recusado — repetir nao mudaria o resultado).
+     *
+     * E seguro repetir porque todos os pedidos que usam isto enviam
+     * 'source_id'/'Idempotency-Key' — o ZumboPay garante que reentregas com
+     * o mesmo identificador devolvem a transacao original em vez de
+     * duplicarem a cobranca (ver documentacao: "Repetir o mesmo
+     * identificador devolve a transaccao original com duplicate:true").
+     */
+    private HttpResponse<String> enviarComRetry(HttpRequest request, int maxTentativas) throws Exception {
+        int[] esperaSegundos = {2, 5, 10};
+        Exception ultimaFalhaDeRede = null;
+
+        for (int tentativa = 1; tentativa <= maxTentativas; tentativa++) {
+            try {
+                return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (java.io.IOException | java.net.http.HttpTimeoutException e) {
+                ultimaFalhaDeRede = e;
+                log.warn("Falha de rede na tentativa {}/{} para {}: {}",
+                        tentativa, maxTentativas, request.uri(), e.getMessage());
+                if (tentativa < maxTentativas) {
+                    int indice = Math.min(tentativa - 1, esperaSegundos.length - 1);
+                    Thread.sleep(esperaSegundos[indice] * 1000L);
+                }
+            }
+        }
+        throw ultimaFalhaDeRede;
     }
 
     /**
@@ -219,11 +251,11 @@ public class ZumboPayService {
                     .header("X-Merchant-Id", merchantId)
                     .header("Content-Type", "application/json")
                     .header("Idempotency-Key", sourceId)
-                    .timeout(Duration.ofSeconds(20))
+                    .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(json))
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = enviarComRetry(request, 3);
             JsonNode corpoResposta = objectMapper.readTree(response.body());
 
             if (response.statusCode() == 200 || response.statusCode() == 202) {
