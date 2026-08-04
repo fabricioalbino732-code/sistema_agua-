@@ -195,7 +195,12 @@ public class ZumboPayService {
         for (int tentativa = 1; tentativa <= maxTentativas; tentativa++) {
             try {
                 return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            } catch (java.io.IOException | java.net.http.HttpTimeoutException e) {
+            } catch (java.io.IOException e) {
+                // java.net.http.HttpTimeoutException ja e um tipo de
+                // IOException, por isso apanhar so IOException ja cobre
+                // timeouts e quedas de ligacao — nao pode estar junto com
+                // IOException num multi-catch (o compilador rejeita, por
+                // ser redundante: "cannot be related by subclassing").
                 ultimaFalhaDeRede = e;
                 log.warn("Falha de rede na tentativa {}/{} para {}: {}",
                         tentativa, maxTentativas, request.uri(), e.getMessage());
