@@ -78,6 +78,13 @@
             <version>${itext.version}</version>
         </dependency>
 
+        <!-- Jakarta Mail (leitura IMAP dos emails de confirmacao ZumboPay) -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+
         <!-- DevTools -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
